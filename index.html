@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Trainer Pro</title>
+    
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2964/2964514.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2964/2964514.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        input, select, textarea { font-size: 16px !important; }
+        body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+    </style>
+</head>
+<body class="bg-black text-white h-screen overflow-hidden">
+    <div id="root"></div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "react": "https://esm.sh/react@18.2.0",
+                "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+                "lucide-react": "https://esm.sh/lucide-react@0.263.1"
+            }
+        }
+    </script>
+    <script type="module" src="https://esm.sh/run" defer></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+            Dumbbell, Lock, Play, Plus, Trash2, CheckCircle2, 
+            Settings, X, ChevronRight, ShieldCheck, Timer, Pause, 
+            ArrowLeft, Search, Layers, Activity, Zap, Monitor, 
+            LayoutGrid, List, Volume2, VolumeX, SkipForward, RotateCcw
+        } from 'lucide-react';
+
+        // --- DATA ---
+        const EXERCISE_CATALOG = [
+          { id: 'ch1', name: 'Flexiones Clásicas', muscle: 'chest', difficulty: 'Intermedio', description: 'Manos a la anchura de los hombros. Cuerpo recto. Baja hasta rozar el suelo.' },
+          { id: 'ch2', name: 'Flexiones Diamante', muscle: 'chest', difficulty: 'Avanzado', description: 'Manos juntas en diamante. Enfoque tríceps/pecho interior.' },
+          { id: 'ch3', name: 'Flexiones Declinadas', muscle: 'chest', difficulty: 'Intermedio', description: 'Pies elevados en silla. Enfoque pectoral superior.' },
+          { id: 'ch4', name: 'Flexiones Inclinadas', muscle: 'chest', difficulty: 'Principiante', description: 'Manos en superficie elevada. Menor carga.' },
+          { id: 'bk1', name: 'Dominadas Pronas', muscle: 'back', difficulty: 'Avanzado', description: 'Palmas al frente. Sube barbilla. Ensancha espalda.' },
+          { id: 'bk2', name: 'Dominadas Supinas', muscle: 'back', difficulty: 'Intermedio', description: 'Palmas hacia ti. Enfoque bíceps/dorsales.' },
+          { id: 'bk3', name: 'Remo Invertido', muscle: 'back', difficulty: 'Intermedio', description: 'Bajo una mesa, tracciona el pecho hacia el borde.' },
+          { id: 'lg1', name: 'Sentadilla (Squat)', muscle: 'legs', difficulty: 'Principiante', description: 'Baja cadera atrás. Espalda recta.' },
+          { id: 'lg2', name: 'Zancadas (Lunges)', muscle: 'legs', difficulty: 'Intermedio', description: 'Paso al frente, baja rodilla trasera. Alterna.' },
+          { id: 'lg3', name: 'Sentadilla Búlgara', muscle: 'legs', difficulty: 'Avanzado', description: 'Un pie apoyado atrás. Baja con una pierna.' },
+          { id: 'sh1', name: 'Flexiones Pike', muscle: 'shoulders', difficulty: 'Intermedio', description: 'Cuerpo en V invertida. Baja cabeza al suelo.' },
+          { id: 'sh4', name: 'Elevaciones Lat. (Botellas)', muscle: 'shoulders', difficulty: 'Principiante', description: 'Con botellas. Levanta brazos lateralmente.' },
+          { id: 'ar1', name: 'Fondos Tríceps', muscle: 'arms', difficulty: 'Principiante', description: 'Manos en silla tras ti. Flexiona codos.' },
+          { id: 'ar3', name: 'Curl Bíceps (Toalla)', muscle: 'arms', difficulty: 'Intermedio', description: 'Usa toalla/marco para resistencia manual.' },
+          { id: 'co1', name: 'Plancha (Plank)', muscle: 'core', difficulty: 'Intermedio', description: 'Antebrazos. Cuerpo recto y tenso.' },
+          { id: 'co2', name: 'Crunch', muscle: 'core', difficulty: 'Principiante', description: 'Eleva omóplatos contrayendo abdomen.' },
+          { id: 'ca1', name: 'Burpees', muscle: 'cardio', difficulty: 'Avanzado', description: 'Sentadilla -> Plancha -> Flexión -> Salto.' },
+          { id: 'ca2', name: 'Jumping Jacks', muscle: 'cardio', difficulty: 'Principiante', description: 'Saltos abriendo piernas/brazos.' }
+        ];
+
+        const MUSCLE_GROUPS = [
+          { id: 'chest', name: 'Pecho', icon: Activity, desc: 'Empuje' },
+          { id: 'back', name: 'Espalda', icon: Layers, desc: 'Tracción' },
+          { id: 'legs', name: 'Piernas', icon: LayoutGrid, desc: 'Potencia' },
+          { id: 'shoulders', name: 'Hombros', icon: Dumbbell, desc: 'Deltoides' },
+          { id: 'arms', name: 'Brazos', icon: Zap, desc: 'Bíceps/Tríceps' },
+          { id: 'core', name: 'Abdomen', icon: ShieldCheck, desc: 'Core' },
+          { id: 'cardio', name: 'Cardio', icon: Activity, desc: 'Quema' },
+        ];
+
+        const Modal = ({ isOpen, onClose, title, children }) => {
+          if (!isOpen) return null;
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+              <div className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl animate-[fadeIn_0.2s_ease-out]">
+                <div className="flex justify-between items-center p-4 border-b border-neutral-800">
+                  <h3 className="text-base font-bold text-white tracking-tight">{title}</h3>
+                  <button onClick={onClose} className="text-neutral-500 hover:text-white transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-4">
+                  {children}
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const speak = (text) => {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'es-ES';
+            window.speechSynthesis.speak(utterance);
+        };
+
+        function App() {
+          const [step, setStep] = useState('loading'); 
+          const [userData, setUserData] = useState({ name: '', password: '', securityQuestion: '', securityAnswer: '' });
+          const [routine, setRoutine] = useState([]);
+          
+          const [showUnlockModal, setShowUnlockModal] = useState(false);
+          const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+          const [workoutActive, setWorkoutActive] = useState(false);
+          
+          const [mobileTab, setMobileTab] = useState('catalog');
+          const [builderCategory, setBuilderCategory] = useState(null); 
+          
+          const [tempPassword, setTempPassword] = useState('');
+          const [tempSecurityAnswer, setTempSecurityAnswer] = useState('');
+          const [searchQuery, setSearchQuery] = useState('');
+
+          useEffect(() => {
+            const savedData = localStorage.getItem('fit_app_mobile_v5_data');
+            if (savedData) {
+              const parsed = JSON.parse(savedData);
+              setUserData(parsed.userData);
+              setRoutine(parsed.routine);
+              if (parsed.userData.password) {
+                setStep('locked');
+              } else if (parsed.userData.name) {
+                setStep('builder');
+              } else {
+                setStep('onboarding');
+              }
+            } else {
+              setStep('onboarding');
+            }
+          }, []);
+
+          useEffect(() => {
+            if (userData.name) {
+              localStorage.setItem('fit_app_mobile_v5_data', JSON.stringify({ userData, routine }));
+            }
+          }, [userData, routine]);
+
+          const handleOnboarding = (e) => {
+            e.preventDefault();
+            if (userData.name.trim()) setStep('builder');
+          };
+
+          const addToRoutine = (exercise) => {
+            const newItem = { ...exercise, uid: Date.now(), sets: 4, reps: 12, rest: 60, completed: false };
+            setRoutine([...routine, newItem]);
+            if (window.navigator && window.navigator.vibrate) navigator.vibrate(50);
+          };
+
+          const removeFromRoutine = (uid) => {
+            setRoutine(routine.filter(item => item.uid !== uid));
+          };
+
+          const updateRoutineItem = (uid, field, value) => {
+            setRoutine(routine.map(item => item.uid === uid ? { ...item, [field]: value } : item));
+          };
+
+          const handleLock = (e) => {
+            e.preventDefault();
+            if (userData.password && userData.securityQuestion && userData.securityAnswer) {
+              setStep('locked');
+              setBuilderCategory(null);
+            }
+          };
+
+          const handleUnlock = (e) => {
+            e.preventDefault();
+            if (tempPassword === userData.password) {
+              setStep('builder');
+              setShowUnlockModal(false);
+              setTempPassword('');
+            } else {
+              alert("Contraseña incorrecta");
+            }
+          };
+
+          const handleRecovery = (e) => {
+            e.preventDefault();
+            if (tempSecurityAnswer.toLowerCase().trim() === userData.securityAnswer.toLowerCase().trim()) {
+              const newPass = prompt("Ingresa nueva contraseña:");
+              if (newPass) {
+                setUserData({ ...userData, password: newPass });
+                alert("Contraseña actualizada.");
+                setShowRecoveryModal(false);
+              }
+            } else {
+              alert("Respuesta incorrecta");
+            }
+          };
+
+          if (step === 'loading') return <div className="min-h-screen bg-black flex items-center justify-center text-white">Cargando...</div>;
+
+          if (step === 'onboarding') {
+            return (
+              <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black opacity-60"></div>
+                <div className="max-w-xs w-full relative z-10">
+                  <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center text-black mb-6 mx-auto shadow-2xl">
+                    <Monitor size={40} />
+                  </div>
+                  <h1 className="text-3xl font-black text-center mb-2 tracking-tighter uppercase">Trainer Pro</h1>
+                  <p className="text-neutral-500 text-center mb-8 text-sm">Configura tu sistema de entrenamiento.</p>
+                  <form onSubmit={handleOnboarding} className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase tracking-widest text-neutral-500 ml-1">Usuario</label>
+                      <input type="text" required placeholder="Tu nombre" className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-lg text-white placeholder-neutral-700 focus:outline-none focus:border-white focus:bg-neutral-800 transition-all" value={userData.name} onChange={(e) => setUserData({...userData, name: e.target.value})} />
+                    </div>
+                    <button className="w-full bg-white text-black font-bold text-base py-4 rounded-xl hover:bg-neutral-200 active:scale-95 flex items-center justify-center gap-2">EMPEZAR <ChevronRight size={18} /></button>
+                  </form>
+                </div>
+              </div>
+            );
+          }
+
+          if (step === 'builder') {
+            return (
+              <div className="min-h-screen bg-black text-white flex flex-col lg:flex-row overflow-hidden pb-[60px] lg:pb-0">
+                <div className={`w-full lg:w-1/2 flex flex-col h-[calc(100vh-60px)] lg:h-screen lg:border-r border-neutral-900 relative ${mobileTab === 'catalog' ? 'flex' : 'hidden lg:flex'}`}>
+                  <div className="px-4 py-3 border-b border-neutral-900 flex justify-between items-center bg-black/80 backdrop-blur-md sticky top-0 z-20 h-[60px]">
+                    <div className="flex items-center gap-2 truncate">
+                        {builderCategory && (
+                            <button onClick={() => setBuilderCategory(null)} className="bg-neutral-900 hover:bg-neutral-800 p-1.5 rounded-full transition-colors flex-shrink-0"><ArrowLeft size={16} /></button>
+                        )}
+                        <div className="truncate"><h2 className="text-base font-bold tracking-tight uppercase truncate">{builderCategory ? MUSCLE_GROUPS.find(g => g.id === builderCategory)?.name : 'Catálogo'}</h2></div>
+                    </div>
+                    {!builderCategory && (
+                         <div className="relative flex-shrink-0 ml-2">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" size={12} />
+                            <input type="text" placeholder="Buscar..." className="bg-neutral-900 border border-neutral-800 rounded-full pl-8 pr-3 py-1.5 text-xs focus:border-white outline-none w-28 focus:w-40 transition-all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                         </div>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 bg-black">
+                    {!builderCategory && !searchQuery && (
+                        <div className="grid grid-cols-2 gap-2">
+                            {MUSCLE_GROUPS.map(group => (
+                                <button key={group.id} onClick={() => setBuilderCategory(group.id)} className="bg-neutral-900/50 border border-neutral-900 p-3 rounded-lg flex flex-col items-center text-center gap-2 active:bg-neutral-800 transition-colors">
+                                    <div className="w-10 h-10 bg-neutral-900 rounded-full flex items-center justify-center text-white border border-neutral-800"><group.icon size={18} /></div>
+                                    <div><h3 className="font-bold text-sm text-white leading-tight">{group.name}</h3><p className="text-[10px] text-neutral-500">{group.desc}</p></div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {(builderCategory || searchQuery) && (
+                        <div className="space-y-2 pb-4">
+                            {EXERCISE_CATALOG.filter(ex => {
+                                if (searchQuery) return ex.name.toLowerCase().includes(searchQuery.toLowerCase()) || ex.muscle.includes(searchQuery.toLowerCase());
+                                return ex.muscle === builderCategory;
+                            }).map(exercise => (
+                                <div key={exercise.id} className="bg-neutral-900/30 border border-neutral-900 p-3 rounded-lg flex justify-between items-center gap-3 active:border-neutral-700">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1"><h3 className="font-bold text-white text-sm truncate">{exercise.name}</h3></div>
+                                        <div className="flex items-center gap-2"><span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border text-neutral-500 border-neutral-800">{exercise.difficulty}</span></div>
+                                    </div>
+                                    <button onClick={() => addToRoutine(exercise)} className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center active:scale-90 flex-shrink-0 shadow-lg"><Plus size={18} /></button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className={`w-full lg:w-1/2 flex flex-col h-[calc(100vh-60px)] lg:h-screen bg-neutral-950 lg:border-l border-neutral-900 ${mobileTab === 'routine' ? 'flex' : 'hidden lg:flex'}`}>
+                  <div className="px-4 py-3 border-b border-neutral-900 flex justify-between items-center bg-neutral-950 h-[60px] sticky top-0 z-20">
+                    <div><p className="text-[9px] text-neutral-500 uppercase tracking-widest mb-0.5">Editando</p><h1 className="text-lg font-black text-white uppercase leading-none truncate max-w-[150px]">{userData.name}</h1></div>
+                    <div className="text-right flex items-center gap-2"><span className="text-xl font-mono font-bold">{routine.length}</span><span className="text-[9px] text-neutral-500 uppercase">Ejs</span></div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 space-y-2 pb-24">
+                    {routine.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-neutral-800 space-y-3 opacity-60"><List size={40} /><p className="text-sm">Tu rutina está vacía.</p></div>
+                    ) : (
+                      routine.map((item, idx) => (
+                        <div key={item.uid} className="bg-black border border-neutral-900 rounded-lg p-3 flex gap-3 items-center">
+                          <span className="font-mono text-neutral-700 text-sm w-5 text-center flex-shrink-0">{idx + 1}</span>
+                          <div className="flex-1 min-w-0"><h3 className="font-bold text-white text-sm truncate">{item.name}</h3></div>
+                          <div className="flex gap-1.5 items-center">
+                            {['sets', 'reps', 'rest'].map((field) => (
+                              <div key={field} className="flex flex-col items-center">
+                                <label className="text-[8px] text-neutral-600 uppercase mb-0.5">{field === 'sets' ? 'S' : field === 'reps' ? 'R' : 'D'}</label>
+                                <input type="number" className="bg-neutral-900/50 w-8 h-7 text-center text-xs font-mono rounded text-white border border-neutral-800 focus:border-white outline-none" value={item[field]} onChange={(e) => updateRoutineItem(item.uid, field, e.target.value)}/>
+                              </div>
+                            ))}
+                          </div>
+                          <button onClick={() => removeFromRoutine(item.uid)} className="text-neutral-600 hover:text-red-500 p-1.5"><Trash2 size={16} /></button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="p-4 bg-black border-t border-neutral-900 fixed bottom-[60px] lg:bottom-0 left-0 w-full lg:w-1/2 lg:relative z-30">
+                    <button disabled={routine.length === 0} onClick={() => setShowUnlockModal(true)} className="w-full bg-white disabled:bg-neutral-800 disabled:text-neutral-600 text-black font-bold py-3.5 rounded-xl hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 shadow-lg text-sm"><Lock size={16} /> FINALIZAR RUTINA</button>
+                  </div>
+                </div>
+
+                <div className="lg:hidden fixed bottom-0 left-0 w-full h-[60px] bg-neutral-950 border-t border-neutral-900 flex z-40">
+                    <button onClick={() => setMobileTab('catalog')} className={`flex-1 flex flex-col items-center justify-center gap-1 ${mobileTab === 'catalog' ? 'text-white' : 'text-neutral-600'}`}><LayoutGrid size={20} /><span className="text-[10px] uppercase font-bold tracking-wider">Catálogo</span></button>
+                    <div className="w-[1px] bg-neutral-900 h-full"></div>
+                    <button onClick={() => setMobileTab('routine')} className={`flex-1 flex flex-col items-center justify-center gap-1 ${mobileTab === 'routine' ? 'text-white' : 'text-neutral-600'}`}><div className="relative"><List size={20} />{routine.length > 0 && <span className="absolute -top-1 -right-2 bg-white text-black text-[9px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full">{routine.length}</span>}</div><span className="text-[10px] uppercase font-bold tracking-wider">Mi Rutina</span></button>
+                </div>
+
+                <Modal isOpen={showUnlockModal && step === 'builder'} onClose={() => setShowUnlockModal(false)} title="Bloquear Rutina">
+                  <form onSubmit={handleLock} className="space-y-4">
+                    <div><label className="block text-[10px] uppercase text-neutral-500 mb-1">Contraseña</label><input type="password" required className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:border-white outline-none text-sm" value={userData.password} onChange={(e) => setUserData({...userData, password: e.target.value})} /></div>
+                    <div className="bg-neutral-900/50 p-3 rounded-lg border border-neutral-800">
+                      <div className="mb-3"><label className="block text-[10px] uppercase text-neutral-500 mb-1">Pregunta Seguridad</label><select required className="w-full bg-black border border-neutral-800 rounded-lg p-2 text-white text-sm focus:border-white outline-none" value={userData.securityQuestion} onChange={(e) => setUserData({...userData, securityQuestion: e.target.value})}><option value="">Selecciona...</option><option value="pet">¿Primera mascota?</option><option value="city">¿Ciudad nacimiento?</option><option value="hero">¿Héroe infancia?</option></select></div>
+                      <div><label className="block text-[10px] uppercase text-neutral-500 mb-1">Respuesta</label><input type="text" required className="w-full bg-black border border-neutral-800 rounded-lg p-2 text-white text-sm focus:border-white outline-none" value={userData.securityAnswer} onChange={(e) => setUserData({...userData, securityAnswer: e.target.value})} /></div>
+                    </div>
+                    <button type="submit" className="w-full bg-white text-black font-bold py-3 rounded-lg hover:bg-neutral-200 mt-2 text-sm">BLOQUEAR</button>
+                  </form>
+                </Modal>
+              </div>
+            );
+          }
+
+          const WorkoutPlayer = () => {
+            const [currentExerciseIdx, setCurrentExerciseIdx] = useState(0);
+            const [currentSet, setCurrentSet] = useState(1);
+            const [timer, setTimer] = useState(0);
+            const [isResting, setIsResting] = useState(false);
+            const [muted, setMuted] = useState(false);
+            const [hasStarted, setHasStarted] = useState(false);
+
+            const activeExercise = routine[currentExerciseIdx];
+            const isFinished = currentExerciseIdx >= routine.length;
+
+            useEffect(() => {
+                if (!hasStarted && !isFinished && activeExercise) {
+                    setHasStarted(true);
+                    const text = `Iniciando. ${activeExercise.name}. ${activeExercise.sets} series de ${activeExercise.reps}.`;
+                    if(!muted) speak(text);
+                }
+            }, [hasStarted, isFinished, activeExercise, muted]);
+
+            useEffect(() => {
+              let interval;
+              if (isResting && timer > 0) {
+                interval = setInterval(() => setTimer(t => t - 1), 1000);
+              } else if (isResting && timer === 0) {
+                setIsResting(false);
+                if (currentSet < parseInt(activeExercise.sets)) {
+                    const nextSet = currentSet + 1;
+                    setCurrentSet(nextSet);
+                    if(!muted) speak(`Serie ${nextSet}. Dale.`);
+                } else {
+                    const nextIdx = currentExerciseIdx + 1;
+                    if (nextIdx < routine.length) {
+                        setCurrentExerciseIdx(nextIdx);
+                        setCurrentSet(1);
+                        const nextEx = routine[nextIdx];
+                        if(!muted) speak(`Siguiente: ${nextEx.name}.`);
+                    } else {
+                        setCurrentExerciseIdx(nextIdx);
+                        if(!muted) speak("Terminamos.");
+                    }
+                }
+              }
+              return () => clearInterval(interval);
+            }, [isResting, timer, currentSet, currentExerciseIdx, activeExercise, muted]);
+
+            const handleCompleteSet = () => {
+                setIsResting(true);
+                const restTime = parseInt(activeExercise.rest);
+                setTimer(restTime);
+                if(!muted) speak(`Descansa ${restTime} segundos.`);
+            };
+
+            if (isFinished) {
+                return (
+                    <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-6 text-center animate-[zoomIn_0.3s_ease-out]">
+                        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-black mb-6 shadow-[0_0_30px_rgba(255,255,255,0.3)]"><CheckCircle2 size={48} /></div>
+                        <h2 className="text-4xl font-black text-white mb-2">¡LISTO!</h2>
+                        <button onClick={() => setWorkoutActive(false)} className="bg-white text-black px-8 py-4 rounded-xl font-bold mt-8">VOLVER AL MENÚ</button>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="fixed inset-0 bg-black z-50 flex flex-col animate-[slideInUp_0.3s_ease-out]">
+                    <div className="px-4 py-3 border-b border-neutral-900 flex justify-between items-center bg-neutral-950">
+                        <div className="flex items-center gap-2"><span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span></span><h2 className="font-bold text-white tracking-wider text-sm">EN PROGRESO</h2></div>
+                        <div className="flex gap-2"><button onClick={() => setMuted(!muted)} className="bg-neutral-900 p-1.5 rounded-full text-white">{muted ? <VolumeX size={18} /> : <Volume2 size={18} />}</button><button onClick={() => setWorkoutActive(false)} className="bg-neutral-900 p-1.5 rounded-full text-white"><X size={18} /></button></div>
+                    </div>
+                    <div className="flex-1 flex flex-col p-6 relative">
+                        <div className="flex justify-between text-xs text-neutral-500 uppercase tracking-widest mb-2"><span>Ejer {currentExerciseIdx + 1} de {routine.length}</span></div>
+                        <div className="w-full bg-neutral-900 h-1 rounded-full mb-8"><div className="bg-green-500 h-1 rounded-full transition-all duration-500" style={{ width: `${((currentExerciseIdx) / routine.length) * 100}%` }}></div></div>
+                        <div className="flex-1 flex flex-col items-center justify-center text-center">
+                            <h1 className="text-3xl font-black text-white mb-4 leading-tight">{activeExercise.name}</h1>
+                            <div className="grid grid-cols-2 gap-4 w-full max-w-sm mb-10">
+                                <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-2xl flex flex-col items-center"><span className="text-xs text-neutral-500 uppercase tracking-widest mb-1">Serie</span><div className="flex items-baseline gap-1"><span className="text-4xl font-bold text-white">{currentSet}</span><span className="text-lg text-neutral-600">/ {activeExercise.sets}</span></div></div>
+                                <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-2xl flex flex-col items-center"><span className="text-xs text-neutral-500 uppercase tracking-widest mb-1">Objetivo</span><div className="flex items-baseline gap-1"><span className="text-4xl font-bold text-white">{activeExercise.reps}</span><span className="text-lg text-neutral-600">Reps</span></div></div>
+                            </div>
+                        </div>
+                        <button onClick={handleCompleteSet} className="w-full bg-white text-black font-black text-lg py-5 rounded-2xl active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center justify-center gap-3 mb-6"><CheckCircle2 size={24} fill="black" className="text-white" /> COMPLETAR SERIE</button>
+                    </div>
+                    {isResting && (
+                        <div className="absolute inset-0 bg-black/95 backdrop-blur-md z-20 flex flex-col items-center justify-center p-6">
+                            <p className="text-sm uppercase tracking-[0.3em] text-neutral-400 mb-8 animate-pulse">Recuperación</p>
+                            <div className="relative mb-12"><div className="w-56 h-56 rounded-full border-2 border-green-500/20 flex items-center justify-center"><h2 className="text-8xl font-mono font-bold text-white tabular-nums">{timer}</h2></div></div>
+                            <button onClick={() => setTimer(0)} className="bg-neutral-800 text-white px-8 py-3 rounded-full font-bold flex items-center gap-2"><SkipForward size={18} /> SALTAR</button>
+                        </div>
+                    )}
+                </div>
+            );
+          };
+
+          if (step === 'locked') {
+            return (
+              <div className="min-h-screen bg-black text-white">
+                {workoutActive && <WorkoutPlayer />}
+                <header className="fixed top-0 w-full z-30 bg-black/90 backdrop-blur-md border-b border-neutral-900 px-4 py-3 flex justify-between items-center h-[60px]">
+                     <div className="flex items-center gap-3"><div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-black font-black text-xs">{userData.name.charAt(0).toUpperCase()}</div><div className="leading-none"><p className="text-[9px] uppercase tracking-widest text-neutral-500">Rutina de</p><p className="font-bold text-sm">{userData.name}</p></div></div>
+                     <button onClick={() => setShowUnlockModal(true)} className="w-9 h-9 rounded-full bg-neutral-900 flex items-center justify-center text-neutral-400 hover:text-white"><Settings size={16} /></button>
+                </header>
+                <main className="pt-20 px-4 max-w-xl mx-auto pb-24">
+                    <div className="flex flex-col gap-4 mb-8">
+                        <div><h1 className="text-3xl font-black mb-1 uppercase tracking-tighter">Mi Plan</h1><div className="flex gap-3 text-xs text-neutral-400"><span className="flex items-center gap-1"><ShieldCheck size={12} className="text-green-500"/> Protegido</span><span>•</span><span>{routine.length} Ejercicios</span></div></div>
+                        <button onClick={() => setWorkoutActive(true)} className="bg-white text-black px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-neutral-200 transition-all shadow-lg flex items-center justify-center gap-2 w-full"><Play size={18} fill="black" /> EMPEZAR SESIÓN</button>
+                    </div>
+                    <div className="space-y-3">
+                        {routine.map((item, index) => (
+                            <div key={item.uid} className="bg-neutral-900/40 border border-neutral-900 rounded-lg p-4 flex items-center gap-4 hover:border-neutral-700 transition-all">
+                                <span className="font-mono text-xl font-bold text-neutral-800 w-6 text-center">{(index + 1)}</span>
+                                <div className="flex-1 min-w-0"><h3 className="text-base font-bold text-white mb-1 truncate">{item.name}</h3><div className="flex flex-wrap gap-1.5"><span className="text-[9px] uppercase font-bold bg-neutral-950 px-1.5 py-0.5 rounded text-neutral-500 border border-neutral-800">{item.sets} X {item.reps}</span><span className="text-[9px] uppercase font-bold bg-neutral-950 px-1.5 py-0.5 rounded text-neutral-500 border border-neutral-800">{item.rest}s</span></div></div>
+                                <div className="w-6 h-6 rounded-full border border-neutral-800 flex items-center justify-center text-neutral-800"><CheckCircle2 size={12} /></div>
+                            </div>
+                        ))}
+                    </div>
+                </main>
+                <Modal isOpen={showUnlockModal} onClose={() => setShowUnlockModal(false)} title="Acceso">
+                    <form onSubmit={handleUnlock} className="space-y-4">
+                        <div className="text-center py-2"><p className="text-neutral-500 text-xs">Ingresa tu contraseña.</p></div>
+                        <input type="password" placeholder="••••" className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:border-white outline-none text-center text-lg tracking-widest transition-colors" value={tempPassword} onChange={(e) => setTempPassword(e.target.value)} autoFocus />
+                        <button type="submit" className="w-full bg-white text-black font-bold py-3.5 rounded-lg hover:bg-neutral-200 transition-colors text-sm">DESBLOQUEAR</button>
+                        <button type="button" onClick={() => { setShowUnlockModal(false); setShowRecoveryModal(true); }} className="w-full text-[10px] text-neutral-500 hover:text-white transition-colors mt-2">Recuperar contraseña</button>
+                    </form>
+                </Modal>
+                <Modal isOpen={showRecoveryModal} onClose={() => setShowRecoveryModal(false)} title="Recuperar">
+                     <form onSubmit={handleRecovery} className="space-y-4">
+                        <div className="p-3 bg-neutral-900 rounded-lg border border-neutral-800"><p className="text-[9px] text-neutral-500 uppercase tracking-widest mb-1">Pregunta</p><p className="text-white text-sm font-medium">{userData.securityQuestion === 'pet' && "¿Nombre de tu primera mascota?"}{userData.securityQuestion === 'city' && "¿Ciudad de nacimiento?"}{userData.securityQuestion === 'hero' && "¿Héroe de la infancia?"}</p></div>
+                        <div><label className="block text-[10px] uppercase text-neutral-500 mb-1">Respuesta</label><input type="text" className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:border-white outline-none transition-colors text-sm" value={tempSecurityAnswer} onChange={(e) => setTempSecurityAnswer(e.target.value)} /></div>
+                        <button type="submit" className="w-full bg-white text-black font-bold py-3.5 rounded-lg hover:bg-neutral-200 transition-colors text-sm">RESTABLECER</button>
+                    </form>
+                </Modal>
+              </div>
+            );
+          }
+
+          const root = createRoot(document.getElementById('root'));
+          root.render(<App />);
+        }
+    </script>
+</body>
+</html>
